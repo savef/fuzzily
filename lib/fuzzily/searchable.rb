@@ -42,6 +42,7 @@ module Fuzzily
       def _find_by_fuzzy(_o, pattern, options={})
         options[:limit] ||= 10
         options[:offset] ||= 0
+        options[:best] ||= false
 
         trigrams = _o.trigram_class_name.constantize.
           limit(options[:limit]).
@@ -49,6 +50,12 @@ module Fuzzily
           for_model(self.name).
           for_field(_o.field.to_s).
           matches_for(pattern)
+
+        if options[:best] && trigrams.present?
+          best_matches = trigrams.first.matches
+          trigrams.to_a.select! { |t| t.matches >= (best_matches / 2.0) }
+        end
+
         records = _load_for_ids(trigrams.map(&:owner_id))
         # order records as per trigram query (no portable way to do this in SQL)
         trigrams.map { |t| records[t.owner_id] }
