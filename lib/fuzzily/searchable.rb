@@ -43,6 +43,7 @@ module Fuzzily
         options[:limit] ||= 10
         options[:offset] ||= 0
         options[:best] ||= false
+        options[:scores] ||= false
 
         trigrams = _o.trigram_class_name.constantize.
           limit(options[:limit]).
@@ -56,9 +57,22 @@ module Fuzzily
           trigrams.to_a.select! { |t| t.matches >= (best_matches / 2.0) }
         end
 
+        if options[:scores]
+          grouped_adjustments = trigrams.group_by(&:matches).map do |_, group|
+            highest_in_group = group.map(&:score).max.to_f
+            group.map { |t| 1 - (t.score / highest_in_group) }
+          end
+          scores = trigrams.map(&:matches).zip(grouped_adjustments.flatten).map(&:sum)
+        end
+
         records = _load_for_ids(trigrams.map(&:owner_id))
         # order records as per trigram query (no portable way to do this in SQL)
-        trigrams.map { |t| records[t.owner_id] }
+        results = trigrams.map { |t| records[t.owner_id] }
+        options[:scores] ? _results_and_scores(results, scores) : results
+      end
+
+      def _results_and_scores(results, scores)
+        results.zip(scores).map { |r, s| { :result => r, :score => s } }
       end
 
       def _load_for_ids(ids)
