@@ -42,6 +42,7 @@ module Fuzzily
       def _find_by_fuzzy(_o, pattern, options={})
         options[:limit] ||= 10
         options[:offset] ||= 0
+        options[:threshold] ||= 0
         options[:best] ||= false
         options[:scores] ||= false
         options[:ids] ||= false
@@ -52,6 +53,10 @@ module Fuzzily
           for_model(self.name).
           for_field(_o.field.to_s).
           matches_for(pattern)
+
+        unless options[:threshold].zero?
+          trigrams.to_a.select! { |t| t.matches >= options[:threshold] }
+        end
 
         if options[:best] && trigrams.present?
           best_matches = trigrams.first.matches
