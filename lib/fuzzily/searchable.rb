@@ -44,6 +44,7 @@ module Fuzzily
         options[:offset] ||= 0
         options[:best] ||= false
         options[:scores] ||= false
+        options[:ids] ||= false
 
         trigrams = _o.trigram_class_name.constantize.
           limit(options[:limit]).
@@ -65,9 +66,12 @@ module Fuzzily
           scores = trigrams.map(&:matches).zip(grouped_adjustments.flatten).map(&:sum)
         end
 
-        records = _load_for_ids(trigrams.map(&:owner_id))
-        # order records as per trigram query (no portable way to do this in SQL)
-        results = trigrams.map { |t| records[t.owner_id] }
+        results = trigrams.map(&:owner_id)
+        unless options[:ids]
+          records = _load_for_ids(results)
+          # order records as per trigram query (no portable way to do this in SQL)
+          results = trigrams.map { |t| records[t.owner_id] }
+        end
         options[:scores] ? _results_and_scores(results, scores) : results
       end
 
