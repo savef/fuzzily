@@ -75,7 +75,7 @@ module Fuzzily
         unless options[:ids]
           records = _load_for_ids(results)
           # order records as per trigram query (no portable way to do this in SQL)
-          results = trigrams.map { |t| records[t.owner_id] }
+          results = trigrams.map { |t| records[t.owner_id] }.compact
         end
         options[:scores] ? _results_and_scores(results, scores) : results
       end
@@ -86,7 +86,7 @@ module Fuzzily
 
       def _load_for_ids(ids)
         {}.tap do |result|
-          find(ids).each { |_r| result[_r.id] = _r }
+          where(:id => ids).each { |_r| result[_r.id] = _r }
         end
       end
 
@@ -166,7 +166,7 @@ module Fuzzily
 
         after_save do |record|
           next unless record.send("#{field}_changed?".to_sym)
-          
+
           record.send(_o.update_trigrams_method)
         end
 
